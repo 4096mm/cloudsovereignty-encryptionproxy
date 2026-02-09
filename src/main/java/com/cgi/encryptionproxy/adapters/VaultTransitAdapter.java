@@ -12,6 +12,8 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -26,9 +28,11 @@ public class VaultTransitAdapter implements ICryptoAdapter {
     private String token;
 
     private final CryptoService cryptoService;
+    private final ObjectMapper objectMapper;
 
-    public VaultTransitAdapter(CryptoService cryptoService) {
+    public VaultTransitAdapter(CryptoService cryptoService, ObjectMapper objectMapper) {
         this.cryptoService = cryptoService;
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -66,7 +70,7 @@ public class VaultTransitAdapter implements ICryptoAdapter {
 
             // Log metadata for each encryption operation
             for (CryptoTask operation : data) {
-                log.info("Encrypted data with metadata: {}", operation.getMetadata());
+                log.info("Encrypted data with metadata: {}", objectMapper.writeValueAsString(operation.getMetadata()));
             }
 
             return parseBatchResponse(responseBody);
@@ -85,12 +89,24 @@ public class VaultTransitAdapter implements ICryptoAdapter {
         return String.format("{\"batch_input\":[%s]}", String.join(",", batchInput));
     }
 
+    private String buildDecryptBatchPayload(Collection<CryptoTask> data) {
+        List<String> batchInput = data.stream()
+                .map(op -> String.format("{\"ciphertext\":\"%s\", \"key_version\":%s}", op.getDataBase64(), op.getKeyVersion()))
+                .toList();
+
+        return String.format("{\"batch_input\":[%s]}", String.join(",", batchInput));
+    }
+
     @Override
     public String[] decryptBatch(List<CryptoTask> data) {
         try {
-            String payload = buildPayload(data);
+            String vaultUrl = String.format("%s/decrypt/%s",
+                    endpoint.replaceAll("/$", ""),
+                    data.getFirst().getKeyName());
+
+            String payload = buildDecryptBatchPayload(data);
             HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint + "/decrypt"))
+                    .uri(URI.create(vaultUrl))
                     .header("X-Vault-Token", token)
                     .header("Content-Type", "application/json")
                     .POST(HttpRequest.BodyPublishers.ofString(payload))
@@ -102,7 +118,9 @@ public class VaultTransitAdapter implements ICryptoAdapter {
                 throw new RuntimeException("Failed to decrypt data: " + response.body());
             }
 
-            throw new UnsupportedOperationException("Not implemented");
+            var responseBody = response.body();
+
+            return parseBatchDecryptResponse(responseBody);
         } catch (Exception e) {
             throw new RuntimeException("Error during decryption", e);
         }
@@ -110,43 +128,7 @@ public class VaultTransitAdapter implements ICryptoAdapter {
 
     @Override
     public String[] rewrapBatch(List<CryptoTask> data) {
-        try {
-            String payload = buildPayload(data);
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(endpoint + "/rewrap"))
-                    .header("X-Vault-Token", token)
-                    .header("Content-Type", "application/json")
-                    .POST(HttpRequest.BodyPublishers.ofString(payload))
-                    .build();
-
-            HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
-
-            if (response.statusCode() != 200) {
-                throw new RuntimeException("Failed to rewrap data: " + response.body());
-            }
-
-            throw new UnsupportedOperationException("Not implemented");
-        } catch (Exception e) {
-            throw new RuntimeException("Error during rewrapping", e);
-        }
-    }
-
-    private String buildPayload(List<CryptoTask> data) {
-        StringBuilder payloadBuilder = new StringBuilder();
-        payloadBuilder.append("{\"batch_input\":[");
-
-        for (int i = 0; i < data.size(); i++) {
-            payloadBuilder.append("{\"plaintext\":\"")
-                    .append(cryptoService.getCryptoTaskPayload(data.get(i)))
-                    .append("\"}");
-
-            if (i < data.size() - 1) {
-                payloadBuilder.append(",");
-            }
-        }
-
-        payloadBuilder.append("]}");
-        return payloadBuilder.toString();
+        throw new UnsupportedOperationException("Not implemented");
     }
 
     private String[] parseBatchResponse(String responseBody) {
@@ -161,6 +143,44 @@ public class VaultTransitAdapter implements ICryptoAdapter {
                 var resultNode = batchResults.get(i);
                 results[i] = resultNode.path("ciphertext").asString();
             }
+            return results;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to parse batch response", e);
+        }
+    }
+
+    private String[] parseBatchDecryptResponse(String responseBody) {
+        try {
+            var rootNode = objectMapper.readTree(responseBody);
+            var dataNode = rootNode.path("data");
+            var batchResults = dataNode.path("batch_results");
+
+            String[] results = new String[batchResults.size()];
+
+            for (int i = 0; i < batchResults.size(); i++) {
+                var resultNode = batchResults.get(i);
+                String encoded = resultNode.path("plaintext").asText("");
+                String decodedPlaintext = new String(
+                        Base64.getDecoder().decode(encoded),
+                        StandardCharsets.UTF_8
+                );
+
+                // split on first ';' only
+                String[] parts = decodedPlaintext.split(";", 2);
+
+                // first argument → returned
+                results[i] = parts[0];
+
+                if (parts.length > 1 && !parts[1].isBlank()) {
+                    try {
+                        Object metadata = objectMapper.readTree(parts[1]);
+                        log.info("Decrypted data with metadata: {}", metadata);
+                    } catch (Exception ignored) {
+                        // optional: log if invalid JSON, but don't fail parsing
+                    }
+                }
+            }
+
             return results;
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse batch response", e);

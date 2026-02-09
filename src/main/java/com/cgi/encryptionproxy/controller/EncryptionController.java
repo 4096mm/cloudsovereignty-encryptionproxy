@@ -40,12 +40,47 @@ public class EncryptionController {
         return ResponseEntity.ok(responses);
     }
 
+    @PostMapping("/decrypt")
+    public ResponseEntity<List<EncryptionResponse>> decrypt(@RequestBody EncryptionRequest request) {
+        List<CryptoTask> operations = request.toCryptoTasks();
+
+        ICryptoAdapter adapter = providerRegistryService.getProvider(request.getKeyProvider());
+
+        var results = adapter.decryptBatch(operations);
+
+        List<EncryptionResponse> responses = Stream.of(results)
+                .map(EncryptionResponse::new)
+                .collect(Collectors.toList());
+
+        return ResponseEntity.ok(responses);
+    }
+
     public static class EncryptionRequest {
         private String keyProvider;
         private String keyName;
         private Integer keyVersion;
         private Object data;
         private Object metadata;
+
+        public void setKeyProvider(String keyProvider) {
+            this.keyProvider = keyProvider;
+        }
+
+        public void setKeyName(String keyName) {
+            this.keyName = keyName;
+        }
+
+        public void setKeyVersion(Integer keyVersion) {
+            this.keyVersion = keyVersion;
+        }
+
+        public void setData(Object data) {
+            this.data = data;
+        }
+
+        public void setMetadata(Object metadata) {
+            this.metadata = metadata;
+        }
 
         public String getKeyProvider() {
             return keyProvider;
@@ -74,7 +109,6 @@ public class EncryptionController {
          */
         public List<CryptoTask> toCryptoTasks() {
             if (data instanceof String b64Data) {
-                ValidationUtils.requireBase64Encoded(b64Data);
                 return List.of(new InternalTask(keyName, keyVersion, b64Data, metadata));
             }
 
