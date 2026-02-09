@@ -1,35 +1,39 @@
 package com.cgi.encryptionproxy.controller;
 
-import org.springframework.web.bind.annotation.*;
-import com.cgi.encryptionproxy.adapters.CryptoOperation;
+import com.cgi.encryptionproxy.adapters.CryptoTask;
 import com.cgi.encryptionproxy.adapters.ICryptoAdapter;
-import com.cgi.encryptionproxy.util.ProviderRegistry;
+import com.cgi.encryptionproxy.service.ProviderRegistryService;
 import com.cgi.encryptionproxy.util.ValidationUtils;
-
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/api/v1")
 public class EncryptionController {
 
-    private final ProviderRegistry providerRegistry;
+    private final ProviderRegistryService providerRegistryService;
 
-    public EncryptionController(ProviderRegistry providerRegistry) {
-        this.providerRegistry = providerRegistry;
+    public EncryptionController(ProviderRegistryService providerRegistryService) {
+        this.providerRegistryService = providerRegistryService;
     }
 
     @PostMapping("/encrypt")
     public ResponseEntity<List<EncryptionResponse>> encrypt(@RequestBody EncryptionRequest request) {
-        CryptoOperation[] operations = request.getDataList();
+        List<CryptoTask> operations = request.toCryptoTasks();
 
-        ICryptoAdapter adapter = providerRegistry.getProvider(request.getKeyProvider());
+        ICryptoAdapter adapter = providerRegistryService.getProvider(request.getKeyProvider());
 
         var results = adapter.encryptBatch(operations);
 
-        List<EncryptionResponse> responses = List.of(results).stream()
+        List<EncryptionResponse> responses = Stream.of(results)
             .map(EncryptionResponse::new)
             .collect(Collectors.toList());
 
@@ -43,78 +47,50 @@ public class EncryptionController {
         private Object data;
         private Object metadata;
 
-        public EncryptionRequest() {
-        }
-
-        public EncryptionRequest(String keyProvider, String keyName, Integer keyVersion, Object data, Object metadata) {
-            this.keyProvider = keyProvider;
-            this.keyName = keyName;
-            this.keyVersion = keyVersion;
-            this.data = data;
-            this.metadata = metadata;
-        }
-
         public String getKeyProvider() {
             return keyProvider;
         }
 
-        public void setKeyProvider(String keyProvider) {
-            this.keyProvider = keyProvider;
+        /**
+         * A lightweight, internal implementation of CryptoTask.
+         * Using a record (Java 16+) makes this extremely memory-efficient and
+         * removes boilerplate.
+         */
+        private record InternalTask(
+                String keyName,
+                Integer keyVersion,
+                String dataBase64,
+                Object metadata
+        ) implements CryptoTask {
+            @Override public String getKeyName() { return keyName; }
+            @Override public Integer getKeyVersion() { return keyVersion; }
+            @Override public String getDataBase64() { return dataBase64; }
+            @Override public Object getMetadata() { return metadata; }
         }
 
-        public String getKeyName() {
-            return keyName;
-        }
+        /**
+         * Transforms the request into a list of tasks without copying
+         * large underlying data strings.
+         */
+        public List<CryptoTask> toCryptoTasks() {
+            if (data instanceof String b64Data) {
+                ValidationUtils.requireBase64Encoded(b64Data);
+                return List.of(new InternalTask(keyName, keyVersion, b64Data, metadata));
+            }
 
-        public void setKeyName(String keyName) {
-            this.keyName = keyName;
-        }
-
-        public Integer getKeyVersion() {
-            return keyVersion;
-        }
-
-        public void setKeyVersion(Integer keyVersion) {
-            this.keyVersion = keyVersion;
-        }
-
-        public Object getData() {
-            return data;
-        }
-
-        public void setData(Object data) {
-            this.data = data;
-        }
-
-        public Object getMetadata() {
-            return metadata;
-        }
-
-        public void setMetadata(Object metadata) {
-            this.metadata = metadata;
-        }
-
-        public CryptoOperation[] getDataList() {
-            if (data instanceof String) {
-                // Single Base64-encoded string
-                ValidationUtils.requireBase64Encoded((String) data);
-                return new CryptoOperation[]{new CryptoOperation(keyName, keyVersion, (String) data, metadata)};
-            } else if (data instanceof List) {
-                // List of objects with plaintext and metadata
+            if (data instanceof List) {
                 return ((List<?>) data).stream().map(item -> {
-                    if (item instanceof Map) {
-                        Map<?, ?> map = (Map<?, ?>) item;
+                    if (item instanceof Map<?, ?> map) {
                         String plaintext = (String) map.get("plaintext");
                         ValidationUtils.requireBase64Encoded(plaintext);
-                        Object itemMetadata = map.get("metadata");
-                        return new CryptoOperation(keyName, keyVersion, plaintext, itemMetadata);
-                    } else {
-                        throw new IllegalArgumentException("Invalid data format. List items must be objects with 'plaintext' and 'metadata'.");
+                        Object itemMetadata = map.getOrDefault("metadata", null);
+                        return new InternalTask(keyName, keyVersion, plaintext, itemMetadata);
                     }
-                }).toArray(CryptoOperation[]::new);
-            } else {
-                throw new IllegalArgumentException("Invalid data format. Must be a string or a list of objects.");
+                    throw new IllegalArgumentException("List items must be objects with 'plaintext'");
+                }).collect(Collectors.toList());
             }
+
+            throw new IllegalArgumentException("Invalid data format: Expected String or List");
         }
     }
 
