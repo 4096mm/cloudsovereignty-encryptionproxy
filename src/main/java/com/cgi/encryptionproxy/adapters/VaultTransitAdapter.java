@@ -13,16 +13,23 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+
+// ToDo: This whole thing is pretty crude - cleanup needed...
 
 @Component("VaultTransitAdapter")
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class VaultTransitAdapter implements ICryptoAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(VaultTransitAdapter.class);
+
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(5))
+            .build();
 
     private String endpoint;
     private String token;
@@ -60,7 +67,7 @@ public class VaultTransitAdapter implements ICryptoAdapter {
                     .POST(HttpRequest.BodyPublishers.ofString(payload))
                     .build();
 
-            HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
                 throw new RuntimeException("Failed to encrypt data: " + response.body());
@@ -112,7 +119,7 @@ public class VaultTransitAdapter implements ICryptoAdapter {
                     .POST(HttpRequest.BodyPublishers.ofString(payload))
                     .build();
 
-            HttpResponse<String> response = HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
                 throw new RuntimeException("Failed to decrypt data: " + response.body());
@@ -133,7 +140,7 @@ public class VaultTransitAdapter implements ICryptoAdapter {
 
     private String[] parseBatchResponse(String responseBody) {
         try {
-            var mapper = new ObjectMapper();
+            var mapper = objectMapper;
             var rootNode = mapper.readTree(responseBody);
             var dataNode = rootNode.path("data");
             var batchResults = dataNode.path("batch_results");

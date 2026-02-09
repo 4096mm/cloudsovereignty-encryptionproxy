@@ -109,6 +109,7 @@ public class EncryptionController {
          */
         public List<CryptoTask> toCryptoTasks() {
             if (data instanceof String b64Data) {
+                // ToDo: Re-add ValidationUtils.requireBase64Encoded(plaintext); only for encryption-task
                 return List.of(new InternalTask(keyName, keyVersion, b64Data, metadata));
             }
 
@@ -116,7 +117,7 @@ public class EncryptionController {
                 return ((List<?>) data).stream().map(item -> {
                     if (item instanceof Map<?, ?> map) {
                         String plaintext = (String) map.get("plaintext");
-                        ValidationUtils.requireBase64Encoded(plaintext);
+                        // ToDo: Re-add ValidationUtils.requireBase64Encoded(plaintext); only for encryption-task
                         Object itemMetadata = map.getOrDefault("metadata", null);
                         return new InternalTask(keyName, keyVersion, plaintext, itemMetadata);
                     }
