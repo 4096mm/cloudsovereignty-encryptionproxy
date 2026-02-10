@@ -1,5 +1,6 @@
 package com.cgi.encryptionproxy.service;
 
+import com.cgi.encryptionproxy.adapters.CryptoAdapter;
 import com.cgi.encryptionproxy.adapters.ICryptoAdapter;
 import com.cgi.encryptionproxy.config.ProviderProperties;
 import org.slf4j.Logger;
@@ -17,7 +18,7 @@ public class ProviderRegistryService {
 
     private static final Logger log = LoggerFactory.getLogger(ProviderRegistryService.class);
 
-    private final Map<String, ICryptoAdapter> activeProviders = new ConcurrentHashMap<>();
+    private final Map<String, CryptoAdapter> activeProviders = new ConcurrentHashMap<>();
     private final ProviderProperties properties;
     private final BeanFactory beanFactory;
 
@@ -38,7 +39,8 @@ public class ProviderRegistryService {
             String beanName = config.getType() + "Adapter";
 
             try {
-                ICryptoAdapter adapter = beanFactory.getBean(beanName, ICryptoAdapter.class);
+                CryptoAdapter adapter = beanFactory.getBean(beanName, CryptoAdapter.class);
+                adapter.setName(name);
                 adapter.configure(config.getParams());
                 activeProviders.put(name, adapter);
 

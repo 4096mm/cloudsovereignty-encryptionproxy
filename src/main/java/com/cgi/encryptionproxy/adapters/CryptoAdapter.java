@@ -3,7 +3,18 @@ package com.cgi.encryptionproxy.adapters;
 import java.util.List;
 import java.util.Map;
 
-public interface ICryptoAdapter {
+public abstract class CryptoAdapter implements ICryptoAdapter {
+
+    private String name;
+
+    public String getProviderName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
     /**
      * Configures the crypto adapter with implementation-specific parameters.
      *
