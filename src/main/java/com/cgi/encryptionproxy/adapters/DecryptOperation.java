@@ -1,7 +1,10 @@
 package com.cgi.encryptionproxy.adapters;
 
 public record DecryptOperation(String provider, String keyName, Integer keyVersion, String ciphertext) {
+
     public static DecryptOperation fromString(String provider, String keyName, String ciphertext) {
+        if(ciphertext == null) return null;
+
         // split ciphertext into version and ciphertext parts on :
         String[] parts = ciphertext.split(":", 2);
         if (parts.length != 2) {

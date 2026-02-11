@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;
 
-import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
@@ -21,8 +20,6 @@ public class VaultTransitAdapter extends BaseKmsAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(VaultTransitAdapter.class);
 
-    private String endpoint;
-    private String token;
 
     private final ObjectMapper objectMapper;
 
@@ -34,8 +31,8 @@ public class VaultTransitAdapter extends BaseKmsAdapter {
 
     @Override
     public void configure(Map<String, String> parameters) {
-        this.endpoint = parameters.get("endpoint");
-        this.token = parameters.get("token");
+        String endpoint = parameters.get("endpoint");
+        String token = parameters.get("token");
 
         if (endpoint == null || token == null) {
             throw new IllegalStateException(
@@ -72,10 +69,13 @@ public class VaultTransitAdapter extends BaseKmsAdapter {
             for (EncryptOperation task : data) {
                 if (task.metadata() != null) {
                     log.info(
-                            "Encrypted data with metadata: {}",
-                            objectMapper.writeValueAsString(task.metadata()));
+                            "Encrypted data with metadata: {} {}",
+                            objectMapper.writeValueAsString(task.metadata()),
+                            task.plaintext());
                 }
             }
+
+            log.info("Encrypted data with metadata: {}", String.join(", ", encryptedValues));
 
             return encryptedValues.toArray(String[]::new);
         } catch (Exception e) {
@@ -101,7 +101,7 @@ public class VaultTransitAdapter extends BaseKmsAdapter {
             List<VaultTransitApi.DecryptResult> decodedPayloads = vaultApi.decryptBatch(keyName, requests);
 
             return decodedPayloads.stream().map(result -> {
-                String decoded = new String(Base64.getDecoder().decode(result.plaintext()));
+                String decoded = result.plaintext();
                 String[] parts = decoded.split(";", 2);
 
                 String metadata = parts.length > 1 ? parts[1] : "{}";

@@ -1,6 +1,9 @@
 package com.cgi.encryptionproxy.adapters.vault;
 
 
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -9,9 +12,6 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
-
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 public class VaultTransitApi {
 
@@ -85,7 +85,7 @@ public class VaultTransitApi {
         }
     }
 
-    private String buildEncryptPayload(List<EncryptRequest> requests) throws Exception {
+    private String buildEncryptPayload(List<EncryptRequest> requests) {
         var root = objectMapper.createObjectNode();
         var batch = root.putArray("batch_input");
 
@@ -100,7 +100,7 @@ public class VaultTransitApi {
         return objectMapper.writeValueAsString(root);
     }
 
-    private String buildDecryptPayload(List<DecryptRequest> requests) throws Exception {
+    private String buildDecryptPayload(List<DecryptRequest> requests) {
         var root = objectMapper.createObjectNode();
         var batch = root.putArray("batch_input");
 
@@ -112,7 +112,7 @@ public class VaultTransitApi {
         return objectMapper.writeValueAsString(root);
     }
 
-    private List<EncryptResult> parseCiphertexts(String body) throws Exception {
+    private List<EncryptResult> parseCiphertexts(String body) {
         JsonNode batchResults = objectMapper
                 .readTree(body)
                 .path("data")
@@ -127,7 +127,7 @@ public class VaultTransitApi {
         return results;
     }
 
-    private List<DecryptResult> parsePlaintexts(String body) throws Exception {
+    private List<DecryptResult> parsePlaintexts(String body) {
         JsonNode batchResults = objectMapper
                 .readTree(body)
                 .path("data")
@@ -152,15 +152,7 @@ public class VaultTransitApi {
 
     public record EncryptRequest(String plaintext, Integer keyVersion) {}
 
-    public record DecryptRequest(String ciphertext, Integer keyVersion) {
-        public static DecryptRequest fromCiphertext(String ciphertext) {
-            String[] parts = ciphertext.split(":", 3);
-            if (parts.length != 3 || !parts[0].equals("vault")) {
-                throw new IllegalArgumentException("Invalid ciphertext format");
-            }
-            return new DecryptRequest(parts[2], Integer.valueOf(parts[1].substring(1)));
-        }
-    }
+    public record DecryptRequest(String ciphertext, Integer keyVersion) {}
 
     public record EncryptResult(String ciphertext, Integer keyVersion) {
         public static EncryptResult fromKey(String ciphertext) {

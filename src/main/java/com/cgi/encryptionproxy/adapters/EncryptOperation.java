@@ -1,7 +1,5 @@
 package com.cgi.encryptionproxy.adapters;
 
-import java.util.Base64;
-
 import tools.jackson.databind.ObjectMapper;
 
 public record EncryptOperation(String provider, String keyName, Integer keyVersion, String plaintext, Object metadata) {
@@ -19,7 +17,6 @@ public record EncryptOperation(String provider, String keyName, Integer keyVersi
             }
         }
 
-        String payload = plaintext() + ";" + metadata;
-        return Base64.getEncoder().encodeToString(payload.getBytes());
+        return String.join(";", plaintext(), metadata);
     }
 }
