@@ -1,6 +1,6 @@
 package com.cgi.encryptionproxy.adapters.vault;
 
-import com.cgi.encryptionproxy.adapters.CryptoAdapter;
+import com.cgi.encryptionproxy.adapters.BaseKmsAdapter;
 import com.cgi.encryptionproxy.adapters.DecryptOperation;
 import com.cgi.encryptionproxy.adapters.EncryptOperation;
 import com.cgi.encryptionproxy.adapters.RewrapOperation;
@@ -17,7 +17,7 @@ import java.util.Map;
 
 @Component("VaultTransitAdapter")
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
-public class VaultTransitAdapter extends CryptoAdapter {
+public class VaultTransitAdapter extends BaseKmsAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(VaultTransitAdapter.class);
 

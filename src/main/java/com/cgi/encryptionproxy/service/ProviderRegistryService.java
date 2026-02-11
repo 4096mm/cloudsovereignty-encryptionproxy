@@ -1,7 +1,7 @@
 package com.cgi.encryptionproxy.service;
 
-import com.cgi.encryptionproxy.adapters.CryptoAdapter;
-import com.cgi.encryptionproxy.adapters.ICryptoAdapter;
+import com.cgi.encryptionproxy.adapters.BaseKmsAdapter;
+import com.cgi.encryptionproxy.adapters.IKmsAdapter;
 import com.cgi.encryptionproxy.config.ProviderProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,7 +18,7 @@ public class ProviderRegistryService {
 
     private static final Logger log = LoggerFactory.getLogger(ProviderRegistryService.class);
 
-    private final Map<String, CryptoAdapter> activeProviders = new ConcurrentHashMap<>();
+    private final Map<String, BaseKmsAdapter> activeProviders = new ConcurrentHashMap<>();
     private final ProviderProperties properties;
     private final BeanFactory beanFactory;
 
@@ -39,7 +39,7 @@ public class ProviderRegistryService {
             String beanName = config.getType() + "Adapter";
 
             try {
-                CryptoAdapter adapter = beanFactory.getBean(beanName, CryptoAdapter.class);
+                BaseKmsAdapter adapter = beanFactory.getBean(beanName, BaseKmsAdapter.class);
                 adapter.setName(name);
                 adapter.configure(config.getParams());
                 activeProviders.put(name, adapter);
@@ -55,7 +55,7 @@ public class ProviderRegistryService {
         });
     }
 
-    public ICryptoAdapter getProvider(String name) {
+    public IKmsAdapter getProvider(String name) {
         return Optional.ofNullable(activeProviders.get(name))
                 .orElseThrow(() -> new IllegalArgumentException("Provider not found: " + name));
     }

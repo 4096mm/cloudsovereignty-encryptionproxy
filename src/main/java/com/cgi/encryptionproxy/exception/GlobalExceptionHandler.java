@@ -1,6 +1,5 @@
-package com.cgi.encryptionproxy.controller;
+package com.cgi.encryptionproxy.exception;
 
-import com.cgi.encryptionproxy.exception.InvalidBase64DataException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;

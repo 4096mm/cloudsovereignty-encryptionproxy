@@ -2,7 +2,7 @@ package com.cgi.encryptionproxy.controller;
 
 import com.cgi.encryptionproxy.adapters.DecryptOperation;
 import com.cgi.encryptionproxy.adapters.EncryptOperation;
-import com.cgi.encryptionproxy.adapters.ICryptoAdapter;
+import com.cgi.encryptionproxy.adapters.IKmsAdapter;
 import com.cgi.encryptionproxy.dto.CiphertextRequest;
 import com.cgi.encryptionproxy.dto.CiphertextResponse;
 import com.cgi.encryptionproxy.dto.PlaintextRequest;
@@ -26,7 +26,7 @@ public class EncryptionController {
 
     @PostMapping("/encrypt")
     public ResponseEntity<List<CiphertextResponse>> encrypt(@RequestBody PlaintextRequest request) {
-        ICryptoAdapter adapter = providerRegistryService.getProvider(request.getKeyProvider());
+        IKmsAdapter adapter = providerRegistryService.getProvider(request.getKeyProvider());
         List<EncryptOperation> tasks = request.toCryptoTasks(request.getKeyProvider());
         String[] results = adapter.encryptBatch(tasks);
 
@@ -40,7 +40,7 @@ public class EncryptionController {
     @PostMapping("/decrypt")
     public ResponseEntity<List<PlaintextResponse>> decrypt(@RequestBody CiphertextRequest request) {
         List<DecryptOperation> tasks = request.toCryptoTasks(request.getKeyProvider());
-        ICryptoAdapter adapter = providerRegistryService.getProvider(request.getKeyProvider());
+        IKmsAdapter adapter = providerRegistryService.getProvider(request.getKeyProvider());
         String[] results = adapter.decryptBatch(tasks);
 
         List<PlaintextResponse> responses = List.of(results).stream()
