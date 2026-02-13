@@ -3,6 +3,7 @@ name: Build and push to Dockerhub
 on:
   push:
     branches: [ main, master, stable, dev ]
+  workflow_dispatch:
 
 jobs:
   build:
