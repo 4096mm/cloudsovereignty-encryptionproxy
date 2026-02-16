@@ -1,6 +1,8 @@
 package com.cgi.encryptionproxy.adapters.stackit;
 
+import java.io.File;
 import java.net.URI;
+import java.nio.file.Files;
 import java.security.interfaces.RSAPrivateKey;
 
 import com.cgi.encryptionproxy.auth.BearerAccessToken;
@@ -14,23 +16,35 @@ import tools.jackson.databind.ObjectMapper;
  * Stackit-specific JWT bearer token provider.
  * Accepts JSON string containing credentials:
  * {
- *   "credentials": {
- *     "iss", "sub", "aud", "kid", "privateKey"
- *   }
+ * "credentials": {
+ * "iss", "sub", "aud", "kid", "privateKey"
+ * }
  * }
  * Automatically uses default Stackit token endpoint.
  */
 public class StackitJwtTokenProvider {
 
-    private static final URI DEFAULT_TOKEN_ENDPOINT =
-            URI.create("https://service-account.api.stackit.cloud/token");
+    private static final URI DEFAULT_TOKEN_ENDPOINT = URI.create("https://service-account.api.stackit.cloud/token");
 
     private final JwtBearerTokenProvider provider;
     private final String iss;
     private final String sub;
     private final String audience;
 
-    public StackitJwtTokenProvider(String serviceAccountJson) {
+    public StackitJwtTokenProvider(String serviceAccount) {
+        String serviceAccountJson;
+
+        File file = new File(serviceAccount);
+        if (file.exists() && file.isFile()) {
+            try {
+                serviceAccountJson = new String(Files.readAllBytes(file.toPath()));
+            } catch (Exception ex) {
+                serviceAccountJson = serviceAccount;
+            }
+        } else {
+            serviceAccountJson = serviceAccount;
+        }
+
         ObjectMapper mapper = new ObjectMapper();
         JsonNode creds = mapper.readTree(serviceAccountJson).path("credentials");
 
@@ -42,7 +56,6 @@ public class StackitJwtTokenProvider {
 
         RSAPrivateKey privateKey = PemUtils.parsePrivateKey(privateKeyPem);
 
-        // 10 minutes token lifetime
         this.provider = new JwtBearerTokenProvider(DEFAULT_TOKEN_ENDPOINT, privateKey, keyId);
     }
 
