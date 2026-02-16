@@ -20,7 +20,6 @@ public class VaultTransitAdapter extends BaseKmsAdapter {
 
     private static final Logger log = LoggerFactory.getLogger(VaultTransitAdapter.class);
 
-
     private final ObjectMapper objectMapper;
 
     private VaultTransitApi vaultApi;
@@ -41,12 +40,6 @@ public class VaultTransitAdapter extends BaseKmsAdapter {
 
         this.vaultApi = new VaultTransitApi(endpoint, token, objectMapper);
     }
-
-    /*
-     * ============================================================
-     * ENCRYPT
-     * ============================================================
-     */
 
     @Override
     public String[] encryptBatch(List<EncryptOperation> data) {
@@ -83,12 +76,6 @@ public class VaultTransitAdapter extends BaseKmsAdapter {
         }
     }
 
-    /*
-     * ============================================================
-     * DECRYPT
-     * ============================================================
-     */
-
     @Override
     public String[] decryptBatch(List<DecryptOperation> data) {
         try {
@@ -113,12 +100,6 @@ public class VaultTransitAdapter extends BaseKmsAdapter {
             throw new RuntimeException("Error during decryption", e);
         }
     }
-
-    /*
-     * ============================================================
-     * REWRAP
-     * ============================================================
-     */
 
     @Override
     public String[] rewrapBatch(List<RewrapOperation> data) {
