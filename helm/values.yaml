@@ -1,0 +1,28 @@
+app: 
+  image:
+    repository: 4096mm/cloudsovereignty-encryptionproxy
+    tag: 
+  appconfig:
+    httpport: 8080
+    httpsport: 8443
+  scale:
+    minReplica: 1
+    maxReplicas: 3
+
+  encryptionproviders:
+    vault:
+      enabled: false
+      type: VaultTransit
+      config:
+        ENDPOINT:
+      secrets:
+        TOKEN:
+
+    stackit:
+      enabled: false
+      type: StackitKms
+      config:
+        PROJECTID:
+        REGIONID:
+        KEYRINGID:
+        SERVICEACCOUNT:

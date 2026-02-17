@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "app.fullname" . }}-config
+data:
+  {{ /* Loop through all providers */ -}}
+  {{- range $providerName, $provider := .Values.app.encryptionproviders }}
+  {{- if $provider.enabled }}
+
+  {{ /* 1. Set the TYPE variable automatically */ -}}
+  {{ /* Result: ENCRYPTION_PROVIDERS__VAULT__TYPE: VaultTransit */ -}}
+  ENCRYPTION_PROVIDERS__{{ $providerName | upper }}__TYPE: {{ $provider.type | quote }}
+
+  {{ /* 2. Loop through the 'config' section and add them */ -}}
+  {{- range $key, $val := $provider.config }}
+  ENCRYPTION_PROVIDERS__{{ $providerName | upper }}__PARAMS__{{ $key | upper }}: {{ $val | quote }}
+  {{- end }}
+
+  {{- end }}
+  {{- end }}
