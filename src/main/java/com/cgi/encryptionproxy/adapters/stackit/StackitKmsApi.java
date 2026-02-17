@@ -18,6 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import com.cgi.encryptionproxy.auth.BearerAccessToken;
+import com.cgi.encryptionproxy.exception.RemoteKmsException;
 
 public class StackitKmsApi {
 
@@ -79,7 +80,7 @@ public class StackitKmsApi {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw new RuntimeException("Stackit list versions failed: " + response.body());
+                throw new RemoteKmsException(response.body(), response.statusCode());
             }
 
             return parseLatestVersion(response.body());
@@ -160,7 +161,7 @@ public class StackitKmsApi {
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw new RuntimeException("Stackit encrypt failed: " + response.body());
+                throw new RemoteKmsException(response.body(), response.statusCode());
             }
 
             JsonNode data = objectMapper.readTree(response.body()).path("data");
@@ -189,8 +190,7 @@ public class StackitKmsApi {
             HttpResponse<String> response = httpClient.send(httpRequest, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw new RuntimeException(
-                        "Stackit decrypt failed: " + response.body() + " for ciphertext: " + request.ciphertext());
+                throw new RemoteKmsException(response.body(), response.statusCode());
             }
 
             JsonNode data = objectMapper.readTree(response.body()).path("data");

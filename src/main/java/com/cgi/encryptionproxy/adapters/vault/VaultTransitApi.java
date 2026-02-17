@@ -12,6 +12,8 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 
+import com.cgi.encryptionproxy.exception.RemoteKmsException;
+
 public class VaultTransitApi {
 
     private final HttpClient httpClient;
@@ -50,7 +52,7 @@ public class VaultTransitApi {
                     httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw new RuntimeException("Vault encrypt failed: " + response.body());
+                throw new RemoteKmsException(response.body(), response.statusCode());
             }
 
             return parseCiphertexts(response.body());
@@ -75,7 +77,7 @@ public class VaultTransitApi {
                     httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 
             if (response.statusCode() != 200) {
-                throw new RuntimeException("Vault decrypt failed: " + response.body());
+                throw new RemoteKmsException(response.body(), response.statusCode());
             }
 
             return parsePlaintexts(response.body());
