@@ -5,6 +5,7 @@ app:
   appconfig:
     httpport: 8080
     httpsport: 8443
+    enableLoadBalancerService: true
   scale:
     minReplica: 1
     maxReplicas: 3
